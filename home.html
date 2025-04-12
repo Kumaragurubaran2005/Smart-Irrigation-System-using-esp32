@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Irrigation Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles_home.css">
+</head>
+<body>
+    <!-- Debug Mode Banner (hidden by default) -->
+    <div id="debugBanner" class="debug-banner" style="display: none;">
+        DEBUG MODE: Using simulated data
+    </div>
+
+    <!-- Alert Notification -->
+    <div id="alert" class="alert">
+        <i id="alert-icon" class="fas fa-info-circle"></i>
+        <span id="alert-message">Notification message</span>
+        <button class="close-alert" onclick="hideAlert()">&times;</button>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-tint"></i> Smart Irrigation Dashboard</h1>
+            <p>AI-powered irrigation monitoring and control</p>
+        </header>
+        
+        <div class="status-grid">
+            <div id="systemStatus" class="card status-card system-idle">
+                <div class="icon"><i class="fas fa-water"></i></div>
+                <div class="card-title">System Status</div>
+                <div class="card-value">Idle</div>
+                <div class="card-description">Your irrigation system is currently not running</div>
+            </div>
+            <div id="deviceStatus" class="card status-card device-offline">
+                <div class="icon"><i class="fas fa-exclamation-triangle offline-pulse"></i></div>
+                <div class="card-title">Device Status</div>
+                <div class="card-value offline-pulse">Offline</div>
+                <div class="card-description">Last seen: <span id="lastSeen">Never</span></div>
+            </div>
+            <div id="connectionStatus" class="card status-card">
+                <div class="icon"><i class="fas fa-wifi"></i></div>
+                <div class="card-title">Connection</div>
+                <div class="card-value"><span id="signalStrength">--</span></div>
+                <div class="card-description"></div>
+            </div>
+        </div>
+        
+        <div class="sensor-grid">
+            <div class="card sensor-card water-level">
+                <div class="icon"><i class="fas fa-water"></i></div>
+                <div class="card-title">Water Level</div>
+                <div id="waterLevel" class="card-value">--</div>
+                <div class="card-description"></div>
+                <div class="water-level-bar-container">
+                    <div id="waterLevelBar" class="water-level-bar"></div>
+                </div>
+            </div>
+            <div class="card sensor-card humidity">
+                <div class="icon"><i class="fas fa-leaf"></i></div>
+                <div class="card-title">Humidity</div>
+                <div id="humidity" class="card-value">--</div>
+                <div class="card-description">Ambient humidity level</div>
+            </div>
+            <div class="card sensor-card temperature">
+                <div class="icon"><i class="fas fa-thermometer-half"></i></div>
+                <div class="card-title">Temperature</div>
+                <div id="temperature" class="card-value">--</div>
+                <div class="card-description">Feels like <span id="feelsLike">--</span></div>
+            </div>
+            <div class="card sensor-card soil-moisture">
+                <div class="icon"><i class="fas fa-seedling"></i></div>
+                <div class="card-title">Soil Moisture</div>
+                <div id="soilMoisture" class="card-value">--</div>
+                <div class="card-description">Vegetable Garden</div>
+            </div>
+        </div>
+        
+        <div class="water-suggestion">
+            <div class="ml-badge">
+                <i class="fas fa-brain"></i> AI Recommendation
+            </div>
+            <h2><i class="fas fa-lightbulb"></i> Irrigation Recommendation</h2>
+            <div class="suggestion-details">
+                <div class="suggestion-item">
+                    <i class="fas fa-tint"></i>
+                    <span>Water Amount: <strong id="water-amount">--</strong></span>
+                </div>
+                <div class="suggestion-item">
+                    <i class="fas fa-clock"></i>
+                    <span>Duration: <strong id="duration">--</strong></span>
+                </div>
+                <div class="suggestion-item">
+                    <i class="fas fa-sync-alt"></i>
+                    <span>Next Update: <strong id="next-update">00:10:00</strong></span>
+                </div>
+            </div>
+            <div class="button-group">
+                <button id="accept-btn" class="button accept" disabled>
+                    <i class="fas fa-check"></i> Accept
+                </button>
+                <button id="reject-btn" class="button reject">
+                    <i class="fas fa-times"></i> Reject
+                </button>
+                <button id="refresh-btn" class="button refresh">
+                    <i class="fas fa-sync-alt"></i> Refresh Now
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="nav">
+        <div class="nav-item active" onclick="navigateTo('home.html')">
+            <i class="fas fa-home"></i>
+            <span>Home</span>
+        </div>
+        <div class="nav-item" onclick="navigateTo('schedule.html')">
+            <i class="fas fa-calendar-alt"></i>
+            <span>Schedule</span>
+        </div>
+        <div class="nav-item" onclick="navigateTo('about.html')">
+            <i class="fas fa-info-circle"></i>
+            <span>About</span>
+        </div>
+        <div class="nav-item" onclick="navigateTo('settings.html')">
+            <i class="fas fa-cog"></i>
+            <span>Settings</span>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const CONFIG = {
+            debugMode: false, // Set to true to enable simulated data
+            websocketUrl: "ws://192.168.117.117:81", // Replace with your ESP32 IP
+            mlApiUrl: "http://localhost:5000/predict", // Your ML API endpoint
+            reconnectDelay: 5000, // 5 seconds
+            offlineThreshold: 30000, // 30 seconds
+            updateInterval: 2000, // 2 seconds for debug mode updates
+            mlRecommendationInterval: 600000, // 10 minutes in milliseconds
+            waterTankCapacity: 100 // Liters
+        };
+
+        // Application State
+        const state = {
+            socket: null,
+            lastUpdateTime: 0,
+            isOnline: false,
+            reconnectTimeout: null,
+            debugInterval: null,
+            mlRecommendationInterval: null,
+            lastRecommendationTime: 0,
+            currentRecommendation: null,
+            sensorData: {
+                humidity: null,
+                temperature: null,
+                soilMoisture: null,
+                waterLevel: null,
+                signalStrength: null
+            }
+        };
+
+        // DOM References
+        const dom = {
+            // Status cards
+            systemStatus: document.getElementById('systemStatus'),
+            deviceStatus: document.getElementById('deviceStatus'),
+            deviceValue: document.querySelector('#deviceStatus .card-value'),
+            deviceIcon: document.querySelector('#deviceStatus .icon i'),
+            lastSeen: document.getElementById('lastSeen'),
+            signalStrength: document.getElementById('signalStrength'),
+            
+            // Sensors
+            waterLevel: document.getElementById('waterLevel'),
+            waterLevelBar: document.getElementById('waterLevelBar'),
+            humidity: document.getElementById('humidity'),
+            temperature: document.getElementById('temperature'),
+            feelsLike: document.getElementById('feelsLike'),
+            soilMoisture: document.getElementById('soilMoisture'),
+            
+            // Recommendations
+            waterAmount: document.getElementById('water-amount'),
+            duration: document.getElementById('duration'),
+            nextUpdate: document.getElementById('next-update'),
+            acceptBtn: document.getElementById('accept-btn'),
+            rejectBtn: document.getElementById('reject-btn'),
+            refreshBtn: document.getElementById('refresh-btn'),
+            
+            // Debug
+            debugBanner: document.getElementById('debugBanner'),
+            
+            // Alert
+            alert: document.getElementById('alert'),
+            alertIcon: document.getElementById('alert-icon'),
+            alertMessage: document.getElementById('alert-message')
+        };
+
+        // Initialize the application
+        function init() {
+            resetAllValues();
+            setupEventListeners();
+            animateCards();
+            connectWebSocket();
+            startMLRecommendationInterval();
+            
+            if (CONFIG.debugMode) {
+                enableDebugMode();
+            }
+        }
+
+        // Reset all values to defaults
+        function resetAllValues() {
+            // Status
+            updateSystemStatus('idle');
+            updateDeviceStatus(false);
+            dom.lastSeen.textContent = 'Never';
+            dom.signalStrength.textContent = '--';
+            
+            // Sensors
+            dom.humidity.textContent = '--%';
+            dom.temperature.textContent = '--°C';
+            dom.feelsLike.textContent = '--°C';
+            dom.soilMoisture.textContent = '--%';
+            dom.waterLevel.textContent = '--%';
+            dom.waterLevelBar.style.width = '0%';
+            
+            // Recommendations
+            dom.waterAmount.textContent = '--';
+            dom.duration.textContent = '--';
+            dom.nextUpdate.textContent = '00:10:00';
+            dom.acceptBtn.disabled = true;
+            
+            // Reset state
+            state.currentRecommendation = null;
+            state.sensorData = {
+                humidity: null,
+                temperature: null,
+                soilMoisture: null,
+                waterLevel: null,
+                signalStrength: null
+            };
+        }
+
+        // Set up event listeners
+        function setupEventListeners() {
+            dom.acceptBtn.addEventListener('click', handleAcceptRecommendation);
+            dom.rejectBtn.addEventListener('click', handleRejectRecommendation);
+            dom.refreshBtn.addEventListener('click', handleRefreshRecommendation);
+            
+            // Check connection status periodically
+            setInterval(checkConnection, 1000);
+            
+            // Update countdown timer every second
+            setInterval(updateCountdownTimer, 1000);
+        }
+
+        // Start ML recommendation interval
+        function startMLRecommendationInterval() {
+            // Clear existing interval if any
+            if (state.mlRecommendationInterval) {
+                clearInterval(state.mlRecommendationInterval);
+            }
+            
+            // Start new interval
+            state.mlRecommendationInterval = setInterval(() => {
+                if (shouldGetRecommendation()) {
+                    getMLRecommendation(state.sensorData);
+                }
+            }, CONFIG.mlRecommendationInterval);
+            
+            // Also get initial recommendation
+            if (shouldGetRecommendation()) {
+                getMLRecommendation(state.sensorData);
+            }
+        }
+
+        // Stop ML recommendation interval
+        function stopMLRecommendationInterval() {
+            if (state.mlRecommendationInterval) {
+                clearInterval(state.mlRecommendationInterval);
+                state.mlRecommendationInterval = null;
+            }
+        }
+
+        // Update countdown timer display
+        function updateCountdownTimer() {
+            if (!state.lastRecommendationTime) return;
+            
+            const now = Date.now();
+            const nextUpdateTime = state.lastRecommendationTime + CONFIG.mlRecommendationInterval;
+            const timeLeft = Math.max(0, nextUpdateTime - now);
+            
+            const hours = Math.floor(timeLeft / (1000 * 60 * 60));
+            const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+            
+            dom.nextUpdate.textContent = 
+                `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        // Animate cards on load
+        function animateCards() {
+            const cards = document.querySelectorAll('.card');
+            cards.forEach((card, index) => {
+                card.style.animationDelay = `${index * 0.1}s`;
+            });
+        }
+
+        // WebSocket Management
+        function connectWebSocket() {
+            if (state.socket) {
+                state.socket.close();
+                clearTimeout(state.reconnectTimeout);
+            }
+            
+            const wsUrl = CONFIG.websocketUrl;
+            console.log(`Attempting to connect to WebSocket at ${wsUrl}`);
+            
+            try {
+                state.socket = new WebSocket(wsUrl);
+                
+                state.socket.onopen = () => {
+                    console.log("WebSocket connected successfully");
+                    updateDeviceStatus(true);
+                    showAlert('Connected to irrigation system', 'success');
+                    state.socket.send(JSON.stringify({ type: 'status_request' }));
+                };
+                
+                state.socket.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        console.log("Received data:", data);
+                        handleWebSocketMessage(event);
+                    } catch (e) {
+                        console.error("Error parsing WebSocket data:", e);
+                    }
+                };
+                
+                state.socket.onclose = () => {
+                    console.log("WebSocket disconnected");
+                    updateDeviceStatus(false);
+                    showAlert('Connection lost. Reconnecting...', 'warning');
+                    state.reconnectTimeout = setTimeout(connectWebSocket, CONFIG.reconnectDelay);
+                };
+                
+                state.socket.onerror = (error) => {
+                    console.error("WebSocket error:", error);
+                    updateDeviceStatus(false);
+                };
+                
+            } catch (error) {
+                console.error("WebSocket initialization error:", error);
+                state.reconnectTimeout = setTimeout(connectWebSocket, CONFIG.reconnectDelay);
+            }
+        }
+
+        async function handleWebSocketMessage(event) {
+            try {
+                const data = JSON.parse(event.data);
+                state.lastUpdateTime = Date.now();
+                
+                if (!state.isOnline) updateDeviceStatus(true);
+                        
+                // Store sensor data in state with consistent property names
+                state.sensorData = {
+                    humidity: typeof data.humidity === 'number' ? data.humidity : state.sensorData.humidity,
+                    temperature: typeof data.temperature === 'number' ? data.temperature : state.sensorData.temperature,
+                    soilMoisture: typeof data.soilMoisture === 'number' ? data.soilMoisture : state.sensorData.soilMoisture,
+                    waterLevel: typeof data.waterLevel === 'number' ? data.waterLevel : state.sensorData.waterLevel,
+                    signalStrength: typeof data.signalStrength === 'number' ? data.signalStrength : state.sensorData.signalStrength
+                };
+
+                // Update displays (real-time)
+                if (state.sensorData.humidity !== null) {
+                    updateSensorDisplay(dom.humidity, `${state.sensorData.humidity.toFixed(1)}%`);
+                }
+                
+                if (state.sensorData.temperature !== null) {
+                    updateSensorDisplay(dom.temperature, `${state.sensorData.temperature.toFixed(1)}°C`);
+                    updateFeelsLikeTemperature(state.sensorData.temperature, state.sensorData.humidity);
+                }
+                
+                if (state.sensorData.soilMoisture !== null) {
+                    updateSensorDisplay(dom.soilMoisture, `${state.sensorData.soilMoisture.toFixed(1)}%`);
+                }
+                
+                if (state.sensorData.waterLevel !== null) {
+                    const levelPercent = (state.sensorData.waterLevel / CONFIG.waterTankCapacity) * 100;
+                    updateSensorDisplay(dom.waterLevel, `${levelPercent.toFixed(1)}%`);
+                    dom.waterLevelBar.style.width = `${levelPercent}%`;
+                }
+                
+                if (state.sensorData.signalStrength !== null) {
+                    dom.signalStrength.textContent = `${state.sensorData.signalStrength}%`;
+                }
+                
+                // System status updates from ESP32 (real-time)
+                if (data.systemStatus) {
+                    updateSystemStatus(data.systemStatus);
+                }
+                
+                // Update last seen time
+                dom.lastSeen.textContent = formatTime(state.lastUpdateTime);
+                if (typeof data.signalStrength === 'number') {
+                    const strength = Math.min(100, Math.max(0, data.signalStrength)); // Clamp 0-100
+                    dom.signalStrength.textContent = `${strength}%`;
+                    
+                    // Optional: Visual indicator (e.g., color)
+                    if (strength > 70) {
+                        document.querySelector('#connectionStatus').className = 'card status-card connection-strong';
+                    } else if (strength > 30) {
+                        document.querySelector('#connectionStatus').className = 'card status-card connection-weak';
+                    } else {
+                        document.querySelector('#connectionStatus').className = 'card status-card connection-poor';
+                    }
+                    }
+                
+            } catch (e) {
+                console.error("Error processing WebSocket data:", e);
+            }
+        }
+
+        // Check if we have all required data for ML recommendation
+        function shouldGetRecommendation() {
+            return (
+                state.sensorData.humidity !== null &&
+                state.sensorData.temperature !== null &&
+                state.sensorData.soilMoisture !== null &&
+                state.sensorData.waterLevel !== null
+            );
+        }
+
+        async function getMLRecommendation(sensorData) {
+            try {
+                // 1. Check if we have all required sensor data
+                if (!shouldGetRecommendation()) {
+                    throw new Error('Incomplete sensor data');
+                }
+
+                // 2. Get and validate crop data
+                const cropData = JSON.parse(localStorage.getItem('cropData'));
+                
+                if (!cropData || !cropData.age_of_crop || !cropData.soil_type || !cropData.crop_planted) {
+                    throw new Error('No crop data available. Please set up your crop in Schedule page.');
+                }
+
+                // 3. Prepare request payload with validation
+                const requestData = {
+                    humidity: sensorData.humidity,
+                    temperature: sensorData.temperature,
+                    soil_moisture: sensorData.soilMoisture,
+                    water_level: sensorData.waterLevel,
+                    age_of_crop: Number(cropData.age_of_crop) || 30,
+                    soil_type: String(cropData.soil_type) || 'Loamy',
+                    crop_planted: String(cropData.crop_planted) || 'Vegetables'
+                };
+
+                console.log("Sending to ML API:", requestData);
+
+                // 4. Make API request with timeout
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+                
+                const response = await fetch(CONFIG.mlApiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestData),
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.message || `API request failed with status ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                // 5. Validate API response
+                if (typeof data?.water_required !== 'number') {
+                    throw new Error('Invalid response format from server');
+                }
+
+                // 6. Update UI with recommendation
+                state.currentRecommendation = data;
+                state.lastRecommendationTime = Date.now();
+                updateRecommendation(data.water_required);
+                showAlert('Recommendation updated', 'success');
+                
+            } catch (error) {
+                console.error('Recommendation error:', error);
+                
+                // Handle different error types with appropriate messages
+                let errorMessage = 'Failed to get recommendation';
+                
+                if (error.message.includes('crop data')) {
+                    errorMessage = error.message;
+                } else if (error.name === 'AbortError') {
+                    errorMessage = 'Request timed out. Please try again.';
+                } else if (error.message.includes('sensor data')) {
+                    errorMessage = 'Waiting for complete sensor data...';
+                } else {
+                    errorMessage = `Error: ${error.message}`;
+                }
+
+                showAlert(errorMessage, 'error');
+                
+                // Fallback to default calculation if in debug mode
+                if (CONFIG.debugMode && shouldGetRecommendation()) {
+                    const fallbackAmount = calculateFallbackWaterAmount(
+                        state.sensorData.soilMoisture,
+                        state.sensorData.temperature,
+                        state.sensorData.humidity
+                    );
+                    
+                    showAlert('Using fallback calculation', 'warning');
+                    state.currentRecommendation = { water_required: fallbackAmount };
+                    updateRecommendation(fallbackAmount);
+                }
+            }
+        }
+
+        // Basic fallback calculation when ML fails
+        function calculateFallbackWaterAmount(moisture, temperature, humidity) {
+            // Simple heuristic based on sensor values
+            const baseAmount = 5; // liters
+            const moistureFactor = (100 - moisture) / 100; // 0-1 scale (dry to wet)
+            const tempFactor = Math.max(0, temperature - 20) / 10; // More water when hotter
+            const humidityFactor = (100 - humidity) / 100; // More water when drier
+            
+            return baseAmount * (1 + moistureFactor + tempFactor + humidityFactor);
+        }
+
+        function updateSensorDisplay(element, value) {
+            element.textContent = value;
+            element.classList.add('updated');
+            setTimeout(() => element.classList.remove('updated'), 1000);
+        }
+
+        function updateFeelsLikeTemperature(temp, humidity) {
+            if (temp === null) return;
+            
+            const feelsLikeTemp = typeof humidity === 'number'
+                ? (temp + (humidity/100 * 2)).toFixed(1)
+                : temp.toFixed(1);
+            dom.feelsLike.textContent = `${feelsLikeTemp}°C`;
+        }
+
+        function updateDeviceStatus(online) {
+            state.isOnline = online;
+            
+            if (online) {
+                dom.deviceStatus.className = 'card status-card device-online';
+                dom.deviceValue.textContent = 'Online';
+                dom.deviceValue.classList.remove('offline-pulse');
+                dom.deviceIcon.className = 'fas fa-check-circle online-pulse';
+                dom.deviceIcon.classList.remove('offline-pulse');
+            } else {
+                dom.deviceStatus.className = 'card status-card device-offline';
+                dom.deviceValue.textContent = 'Offline';
+                dom.deviceValue.classList.add('offline-pulse');
+                dom.deviceIcon.className = 'fas fa-exclamation-triangle offline-pulse';
+                dom.acceptBtn.disabled = true;
+            }
+        }
+
+        function updateSystemStatus(status) {
+            const systemValue = dom.systemStatus.querySelector('.card-value');
+            const systemIcon = dom.systemStatus.querySelector('.icon i');
+            const description = dom.systemStatus.querySelector('.card-description');
+            
+            switch(status) {
+                case 'watering':
+                    dom.systemStatus.className = 'card status-card system-running';
+                    systemValue.textContent = 'Watering';
+                    systemIcon.className = 'fas fa-tint';
+                    description.textContent = 'Your irrigation system is currently watering';
+                    dom.acceptBtn.disabled = true; // Disable accept while watering
+                    break;
+                case 'active':
+                    dom.systemStatus.className = 'card status-card system-active';
+                    systemValue.textContent = 'Active';
+                    systemIcon.className = 'fas fa-tint';
+                    description.textContent = 'Your irrigation system is active';
+                    break;
+                default: // idle
+                    dom.systemStatus.className = 'card status-card system-idle';
+                    systemValue.textContent = 'Idle';
+                    systemIcon.className = 'fas fa-water';
+                    description.textContent = 'Your irrigation system is currently not running';
+            }
+        }
+
+        function updateRecommendation(amount) {
+            // Safely handle values
+            const safeAmount = typeof amount === 'number' ? amount : 0;
+            const durationMins = calculateDuration(safeAmount);
+            
+            dom.waterAmount.textContent = `${safeAmount.toFixed(1)} liters`;
+            dom.duration.textContent = `${durationMins} minutes`;
+            
+            dom.acceptBtn.disabled = !state.isOnline;
+        }
+
+        // Button Handlers
+        function handleAcceptRecommendation() {
+            if (state.socket && state.socket.readyState === WebSocket.OPEN) {
+                const waterAmountText = dom.waterAmount.textContent;
+                const waterAmountValue = parseFloat(waterAmountText);
+                
+                if (isNaN(waterAmountValue)) {
+                    showAlert('Invalid water amount', 'error');
+                    return;
+                }
+                
+                const durationMinutes = calculateDuration(waterAmountValue);
+                updateSystemStatus('watering');
+                
+                // Send command to ESP32
+                state.socket.send(JSON.stringify({
+                    type: 'irrigation_command',
+                    command: 'start',
+                    duration: durationMinutes,
+                    water_amount: waterAmountValue
+                }));
+                
+                showAlert(`Irrigation started for ${durationMinutes} minutes (${waterAmountValue}L)`, 'success');
+                
+                // Disable accept button during watering
+                dom.acceptBtn.disabled = true;
+                
+                // Schedule return to idle after duration
+                setTimeout(() => {
+                    if (dom.systemStatus.querySelector('.card-value').textContent === 'Watering') {
+                        updateSystemStatus('idle');
+                        dom.acceptBtn.disabled = state.isOnline ? false : true;
+                    }
+                }, durationMinutes * 60 * 1000);
+                
+            } else {
+                showAlert('Cannot send command - device is offline', 'error');
+            }
+        }
+
+        function handleRejectRecommendation() {
+            // Clear recommendation fields
+            dom.waterAmount.textContent = '--';
+            dom.duration.textContent = '--';
+            
+            // Clear the current recommendation in state
+            state.currentRecommendation = null;
+            
+            showAlert('Irrigation recommendation rejected', 'info');
+            
+            // If connected, notify ESP32 of rejection
+            if (state.socket && state.socket.readyState === WebSocket.OPEN) {
+                state.socket.send(JSON.stringify({
+                    type: 'irrigation_command',
+                    command: 'reject_recommendation'
+                }));
+            }
+        }
+
+        function handleRefreshRecommendation() {
+            if (shouldGetRecommendation()) {
+                getMLRecommendation(state.sensorData);
+            } else {
+                showAlert('Cannot refresh - waiting for complete sensor data', 'warning');
+            }
+        }
+
+        // Utility Functions
+        function calculateDuration(waterAmountLiters) {
+            // Adjust based on your system's flow rate
+            const flowRate = 2.0; // liters per minute (adjust based on your setup)
+            return Math.max(1, Math.round(waterAmountLiters / flowRate));
+        }
+
+        function formatTime(timestamp) {
+            return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function checkConnection() {
+            const now = Date.now();
+            if (state.isOnline && now - state.lastUpdateTime > CONFIG.offlineThreshold) {
+                updateDeviceStatus(false);
+            }
+        }
+
+        // Debug Mode Functions
+        function enableDebugMode() {
+            dom.debugBanner.style.display = 'block';
+            console.log("Debug mode enabled - simulating data");
+            
+            state.debugInterval = setInterval(() => {
+                const fakeData = {
+                    humidity: Math.random() * 30 + 50,
+                    temperature: Math.random() * 10 + 20,
+                    soilMoisture: Math.random() * 50 + 20,
+                    waterLevel: Math.random() * CONFIG.waterTankCapacity,
+                    signalStrength: Math.random() * 40 + 60,
+                    systemStatus: Math.random() > 0.8 ? 'watering' : 'idle'
+                };
+                
+                // Simulate WebSocket message
+                handleWebSocketMessage({ data: JSON.stringify(fakeData) });
+            }, CONFIG.updateInterval);
+        }
+
+        function disableDebugMode() {
+            clearInterval(state.debugInterval);
+            dom.debugBanner.style.display = 'none';
+        }
+
+        // Alert System
+        function showAlert(message, type = 'info', duration = 3000) {
+            dom.alertMessage.textContent = message;
+            dom.alert.className = `alert alert-${type} show`;
+            
+            switch(type) {
+                case 'success': 
+                    dom.alertIcon.className = 'fas fa-check-circle'; 
+                    break;
+                case 'error': 
+                    dom.alertIcon.className = 'fas fa-exclamation-circle'; 
+                    break;
+                case 'warning': 
+                    dom.alertIcon.className = 'fas fa-exclamation-triangle'; 
+                    break;
+                default: 
+                    dom.alertIcon.className = 'fas fa-info-circle';
+            }
+            
+            if (duration > 0) {
+                setTimeout(hideAlert, duration);
+            }
+        }
+
+        function hideAlert() {
+            dom.alert.classList.remove('show');
+        }
+
+        // Navigation
+        function navigateTo(page) {
+            window.location.href = page;
+        }
+
+        // Start the application
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>

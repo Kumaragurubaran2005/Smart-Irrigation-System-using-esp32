@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Irrigation Scheduler</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #2e7d32;
+            --secondary-color: #388e3c;
+            --danger-color: #d32f2f;
+            --warning-color: #ffa000;
+            --info-color: #0288d1;
+            --light-bg: rgba(255, 255, 255, 0.95);
+            --dark-text: #333;
+            --light-text: #f5f5f5;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), 
+                        url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80') no-repeat center center fixed;
+            background-size: cover;
+            color: var(--dark-text);
+            min-height: 130vh;
+            padding-bottom: 80px;
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .slide-in {
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        .schedule-card {
+            transition: var(--transition);
+            border-left: 4px solid var(--primary-color);
+        }
+        
+        .schedule-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .nav {
+            display: flex;
+            justify-content: space-around;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 8px 0;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            z-index: 100;
+        }
+        
+        .nav-item {
+            text-align: center;
+            font-size: 0.9rem;
+            color: #666;
+            cursor: pointer;
+            transition: var(--transition);
+            padding: 5px 15px;
+            border-radius: 20px;
+        }
+        
+        .nav-item i {
+            font-size: 1.4rem;
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        .nav-item.active {
+            color: var(--primary-color);
+            font-weight: 600;
+            background: rgba(46, 125, 50, 0.1);
+        }
+        
+        .nav-item:hover {
+            color: var(--primary-color);
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: var(--primary-color);
+            border-radius: 10px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--secondary-color);
+        }
+
+        /* Confirmation section */
+        .confirmation-section {
+            border-top: 1px solid #eee;
+            margin-top: 20px;
+            padding-top: 20px;
+        }
+
+        /* Watering confirmation overlay */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+
+        .watering-confirmation {
+            background-color: white;
+            padding: 25px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .watering-icon {
+            font-size: 3rem;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+        }
+
+        .confirmation-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center p-4 md:p-6">
+    <header class="w-full text-center mb-6">
+        <h1 class="text-3xl font-bold text-white mb-2">Irrigation Schedules</h1>
+        <p class="text-white opacity-80">Manage your automated watering plans</p>
+    </header>
+
+    <div id="noScheduleBox" class="bg-white p-8 rounded-xl shadow-lg mt-4 w-full max-w-2xl text-center fade-in">
+        <div class="text-6xl text-gray-300 mb-4">
+            <i class="fas fa-calendar-plus"></i>
+        </div>
+        <h2 class="text-2xl font-semibold text-gray-700 mb-2">No schedules created yet</h2>
+        <p class="text-gray-500 mb-6">Create your first irrigation schedule to automate your watering system</p>
+        <button onclick="showScheduleForm()" class="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg shadow-md transition-all transform hover:scale-105">
+            <i class="fas fa-plus mr-2"></i> Create Schedule
+        </button>
+    </div>
+
+    <div id="scheduleList" class="w-full max-w-2xl mt-6 hidden">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-2xl font-semibold text-white">Your Schedules</h2>
+            <button onclick="showScheduleForm()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm">
+                <i class="fas fa-plus mr-1"></i> Add New
+            </button>
+        </div>
+        
+        <div id="savedSchedules" class="space-y-4 max-h-[60vh] overflow-y-auto pr-2"></div>
+    </div>
+
+    <div id="scheduleForm" class="bg-white p-6 rounded-xl shadow-lg mt-6 w-full max-w-2xl hidden slide-in">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-2xl font-semibold text-gray-800">
+                <i class="fas fa-calendar-plus text-green-600 mr-2"></i> New Irrigation Schedule
+            </h2>
+            <button onclick="hideScheduleForm()" class="text-gray-500 hover:text-gray-700">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Soil Type</label>
+                <select id="soilType" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                    <option value="">Select Soil Type</option>
+                    <option value="Red Soil">Red Soil</option>
+                    <option value="Black Soil">Black Soil</option>
+                    <option value="Alluvial Soil">Alluvial Soil</option>
+                    <option value="Sandy Soil">Sandy Soil</option>
+                    <option value="Clay Soil">Clay Soil</option>
+                </select>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Crop Type</label>
+                <select id="vegetation" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                    <option value="">Select Crop Type</option>
+                    <option value="Rice">🌾 Rice</option>
+                    <option value="Wheat">🌾 Wheat</option>
+                    <option value="Maize">🌽 Maize</option>
+                    <option value="Corn">🌽 Corn</option>
+                    <option value="Peanuts">🥜 Peanuts</option>
+                    <option value="Tomatoes">🍅 Tomatoes</option>
+                    <option value="Potatoes">🥔 Potatoes</option>
+                    <option value="Cotton">👕 Cotton</option>
+                </select>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Planting Date</label>
+                <input type="date" id="plantingDate" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Frequency</label>
+                <select id="frequency" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                    <option value="">Select Frequency</option>
+                    <option value="1">Once per week</option>
+                    <option value="2">Twice per week</option>
+                    <option value="3">Every other day</option>
+                    <option value="7">Daily</option>
+                    <option value="14">Every 2 weeks</option>
+                </select>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Start Time</label>
+                <input type="time" id="wateringTime" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Duration (minutes)</label>
+                <input type="number" id="duration" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" min="1" placeholder="e.g. 30">
+            </div>
+        </div>
+
+        <div class="confirmation-section">
+            <h3 class="text-lg font-semibold text-gray-700 mb-3">Confirmation</h3>
+            <div class="flex items-center mb-3">
+                <input type="checkbox" id="confirmIrrigation" class="mr-2 h-5 w-5" onclick="confirmWatering()">
+                <label for="confirmIrrigation" class="text-gray-700">Start irrigation now if it's time</label>
+            </div>
+            <p class="text-sm text-gray-500 mb-4">Check this box if you want the system to start watering immediately if the scheduled time matches current time.</p>
+        </div>
+
+        <div class="mt-6 flex justify-between space-x-3">
+            <button onclick="hideScheduleForm()" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition">
+                Cancel
+            </button>
+            <div class="flex space-x-3">
+                <button onclick="rejectSchedule()" class="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg transition">
+                    <i class="fas fa-times mr-2"></i> Reject
+                </button>
+                <button onclick="acceptAndSaveSchedule()" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition flex items-center">
+                    <i class="fas fa-check mr-2"></i> Accept & Save
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Watering Confirmation Overlay -->
+    <div id="wateringConfirmationOverlay" class="overlay hidden">
+        <div class="watering-confirmation">
+            <div class="watering-icon">
+                <i class="fas fa-tint"></i>
+            </div>
+            <h3 class="text-xl font-semibold mb-2">Time to Water!</h3>
+            <p id="wateringConfirmationText" class="text-gray-600 mb-4">It's time to water your <span id="confirmationCropName" class="font-semibold"></span> as scheduled.</p>
+            <p class="text-sm text-gray-500 mb-4">Duration: <span id="confirmationDuration" class="font-semibold"></span> minutes</p>
+            
+            <div class="confirmation-buttons">
+                <button onclick="skipWatering()" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition">
+                    Skip
+                </button>
+                <button onclick="confirmWatering()" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition">
+                    Water Now
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="nav">
+        <div class="nav-item" onclick="window.location.href='home.html'">
+            <i class="fas fa-home"></i>
+            <span>Home</span>
+        </div>
+        <div class="nav-item active" onclick="window.location.href='schedule.html'">
+            <i class="fas fa-calendar-alt"></i>
+            <span>Schedule</span>
+        </div>
+        <div class="nav-item" onclick="window.location.href='about.html'">
+            <i class="fas fa-info-circle"></i>
+            <span>About</span>
+        </div>
+        <div class="nav-item" onclick="window.location.href='settings.html'">
+            <i class="fas fa-cog"></i>
+            <span>Settings</span>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let socket;
+        let isConnected = false;
+        let schedules = [];
+        let currentScheduleToConfirm = null;
+        const reconnectInterval = 5000; // 5 seconds
+
+        // Connect to WebSocket server (ESP32)
+        function connectWebSocket() {
+            const wsUrl = "ws://192.168.117.117:81"; // Or your ESP32's IP
+            socket = new WebSocket(wsUrl);
+            
+            socket.onopen = function() {
+                isConnected = true;
+                console.log("Connected to ESP32");
+                showAlert("Connected to irrigation system", "success");
+            };
+            
+            socket.onclose = function() {
+                isConnected = false;
+                console.log("Disconnected from ESP32");
+                showAlert("Disconnected from ESP32. Reconnecting...", "error");
+                setTimeout(connectWebSocket, reconnectInterval);
+            };
+            
+            socket.onerror = function(error) {
+                console.error("WebSocket error:", error);
+            };
+        }
+
+        // Load schedules when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            connectWebSocket();
+            loadSchedules();
+            setInterval(checkSchedules, 60000); // Check every minute
+            
+            // Set default planting date to today
+            const today = new Date();
+            const formattedDate = today.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+            document.getElementById('plantingDate').value = formattedDate;
+        });
+
+        // Load schedules from localStorage
+        function loadSchedules() {
+            const savedSchedules = localStorage.getItem('schedulesData');
+            if (savedSchedules) {
+                try {
+                    schedules = JSON.parse(savedSchedules);
+                    // Convert string dates back to Date objects
+                    schedules.forEach(schedule => {
+                        if (schedule.nextRun) schedule.nextRun = new Date(schedule.nextRun);
+                        if (schedule.lastRun) schedule.lastRun = new Date(schedule.lastRun);
+                        if (schedule.plantingDate) schedule.plantingDate = new Date(schedule.plantingDate);
+                    });
+                    renderSchedules();
+                } catch (e) {
+                    console.error("Error parsing schedules:", e);
+                    schedules = [];
+                }
+            }
+            
+            updateUI();
+            // Share data with home page after loading
+            shareDataWithHomePage();
+        }
+
+        // Calculate crop age in days
+        function calculateCropAge(plantingDate) {
+            if (!plantingDate) return 0;
+            
+            const today = new Date();
+            const planted = new Date(plantingDate);
+            
+            // Calculate difference in milliseconds
+            const diffTime = Math.abs(today - planted);
+            
+            // Convert to days
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            return diffDays;
+        }
+
+        // Function to share data with home page
+        function shareDataWithHomePage() {
+    // If we have schedules, prepare the data for sharing
+            if (schedules.length > 0) {
+                // Get the most recent schedule (or you could merge data from all schedules)
+                const latestSchedule = schedules[schedules.length - 1];
+                
+                // Create the data structure expected by the home page
+                const cropData = {
+                    soil_type: latestSchedule.soil,
+                    crop_planted: latestSchedule.vegetation,
+                    age_of_crop: calculateCropAge(latestSchedule.plantingDate)
+                };
+                
+                // Store in localStorage for home page to access
+                localStorage.setItem('cropData', JSON.stringify(cropData));
+                console.log("Crop data shared with home page:", cropData);
+            } else {
+                // Clear crop data if no schedules exist
+                localStorage.removeItem('cropData');
+            }
+        }
+
+        // Render all schedules to the DOM
+        function renderSchedules() {
+            const container = document.getElementById('savedSchedules');
+            container.innerHTML = '';
+            
+            schedules.forEach(schedule => {
+                const frequencyText = getFrequencyText(schedule.frequency);
+                const nextRun = schedule.nextRun ? new Date(schedule.nextRun) : null;
+                const cropAge = calculateCropAge(schedule.plantingDate);
+                
+                const scheduleElement = document.createElement('div');
+                scheduleElement.id = `schedule-${schedule.id}`;
+                scheduleElement.className = 'p-5 bg-white rounded-xl shadow-md schedule-card fade-in';
+                scheduleElement.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="flex items-center mb-2">
+                                <span class="text-lg font-semibold text-gray-800">${schedule.vegetation}</span>
+                                <span class="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">${schedule.soil}</span>
+                                <span class="ml-2 px-2 py-1 bg-amber-100 text-amber-800 text-xs rounded-full">${cropAge} days old</span>
+                            </div>
+                            <div class="text-gray-600 space-y-1">
+                                <p class="flex items-center"><i class="fas fa-clock text-blue-500 mr-2 w-5"></i> ${schedule.duration} mins duration</p>
+                                <p class="flex items-center"><i class="fas fa-sync-alt text-purple-500 mr-2 w-5"></i> ${frequencyText}</p>
+                                <p class="flex items-center"><i class="fas fa-clock text-yellow-500 mr-2 w-5"></i> ${formatTime(schedule.wateringTime)}</p>
+                                <p class="flex items-center"><i class="fas fa-seedling text-green-500 mr-2 w-5"></i> Planted: ${formatDate(schedule.plantingDate)}</p>
+                                ${nextRun ? `<p class="flex items-center text-sm text-gray-500"><i class="fas fa-calendar-check text-green-500 mr-2 w-5"></i> Next: ${formatNextRun(nextRun)}</p>` : ''}
+                            </div>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button onclick='editSchedule(${schedule.id})' class='bg-blue-100 hover:bg-blue-200 text-blue-600 p-2 rounded-lg'>
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button onclick='deleteSchedule(${schedule.id})' class='bg-red-100 hover:bg-red-200 text-red-600 p-2 rounded-lg'>
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(scheduleElement);
+            });
+            
+            updateUI();
+        }
+
+        // Update UI based on schedules
+        function updateUI() {
+            if (schedules.length > 0) {
+                document.getElementById('scheduleList').classList.remove('hidden');
+                document.getElementById('noScheduleBox').classList.add('hidden');
+            } else {
+                document.getElementById('scheduleList').classList.add('hidden');
+                document.getElementById('noScheduleBox').classList.remove('hidden');
+            }
+        }
+
+        // Delete a schedule
+        function deleteSchedule(id) {
+            // Find index of schedule to delete
+            const index = schedules.findIndex(s => s.id === id);
+            
+            if (index !== -1) {
+                // Remove from array
+                schedules.splice(index, 1);
+                
+                // Update localStorage
+                saveSchedulesData();
+                
+                // Re-render schedules
+                renderSchedules();
+                
+                showAlert('Schedule deleted successfully', 'success');
+            } else {
+                showAlert('Schedule not found', 'error');
+            }
+        }
+
+        // Create a new schedule object from form data
+        function createScheduleFromForm() {
+            const soil = document.getElementById('soilType').value;
+            const vegetation = document.getElementById('vegetation').value;
+            const frequency = document.getElementById('frequency').value;
+            const wateringTime = document.getElementById('wateringTime').value;
+            const duration = document.getElementById('duration').value;
+            const plantingDate = document.getElementById('plantingDate').value;
+
+            // Validate inputs
+            if (!soil || !vegetation || !frequency || !wateringTime || !duration || !plantingDate) {
+                showAlert('Please fill in all fields', 'error');
+                return null;
+            }
+
+            return {
+                id: Date.now(),
+                vegetation,
+                soil,
+                duration,
+                frequency,
+                wateringTime,
+                plantingDate: new Date(plantingDate),
+                lastRun: null,
+                nextRun: calculateNextRun(wateringTime, frequency)
+            };
+        }
+
+        // Accept and save the schedule (with optional immediate execution)
+        function acceptAndSaveSchedule() {
+            const newSchedule = createScheduleFromForm();
+            if (!newSchedule) return;
+
+            const shouldStartNow = document.getElementById('confirmIrrigation').checked;
+            
+            schedules.push(newSchedule);
+            saveSchedulesData();
+            renderSchedules();
+            
+            // Properly reset the form
+            const form = document.getElementById('scheduleForm');
+            form.reset();
+            
+            // Reset planting date to today
+            const today = new Date();
+            const formattedDate = today.toISOString().split('T')[0];
+            document.getElementById('plantingDate').value = formattedDate;
+            
+            // Reset time to current time + 5 minutes
+            const now = new Date();
+            now.setMinutes(now.getMinutes() + 5);
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            document.getElementById('wateringTime').value = `${hours}:${minutes}`;
+            
+            hideScheduleForm();
+    
+            showAlert('Schedule saved successfully!', 'success');
+    
+            
+            // If user checked the box and it's time to water, show confirmation overlay
+            if (shouldStartNow) {
+                const now = new Date();
+                const [hours, minutes] = newSchedule.wateringTime.split(':').map(Number);
+                const scheduledTime = new Date();
+                scheduledTime.setHours(hours, minutes, 0, 0);
+                
+                // Check if current time matches scheduled time (within 5 minute window)
+                if (Math.abs(now - scheduledTime) < 300000) { // 5 minutes in milliseconds
+                    showWateringConfirmation(newSchedule);
+                } else {
+                    showAlert('Schedule saved but not started (current time doesn\'t match schedule)', 'info');
+                }
+            }
+        }
+
+        // Reject the schedule (just close the form)
+        function rejectSchedule() {
+            hideScheduleForm();
+            showAlert('Schedule not saved', 'info');
+        }
+
+        // Save all schedules to localStorage and share with home page
+        function saveSchedulesData() {
+            localStorage.setItem('schedulesData', JSON.stringify(schedules));
+            
+            // Also update crop data for home page
+            shareDataWithHomePage();
+        }
+
+        // Check schedules and show confirmation overlay if it's time to water
+        function checkSchedules() {
+            if (!isConnected) {
+                console.log("Not connected to ESP32 - skipping schedule check");
+                return;
+            }
+            
+            const now = new Date();
+            console.log("Checking schedules at", now.toLocaleString());
+            
+            schedules.forEach(schedule => {
+                // If it's time to run (within current minute)
+                if (schedule.nextRun && now >= schedule.nextRun && now < new Date(schedule.nextRun.getTime() + 60000)) {
+                    // Show confirmation overlay
+                    showWateringConfirmation(schedule);
+                }
+            });
+        }
+
+        // Show watering confirmation overlay
+        function showWateringConfirmation(schedule) {
+            currentScheduleToConfirm = schedule;
+            
+            // Update overlay content
+            document.getElementById('confirmationCropName').textContent = schedule.vegetation;
+            document.getElementById('confirmationDuration').textContent = schedule.duration;
+            
+            // Show overlay
+            document.getElementById('wateringConfirmationOverlay').classList.remove('hidden');
+        }
+
+        // Hide watering confirmation overlay
+        function hideWateringConfirmation() {
+            document.getElementById('wateringConfirmationOverlay').classList.add('hidden');
+            currentScheduleToConfirm = null;
+        }
+
+        // User confirms they want to water now
+        // In your schedule.html or equivalent
+        function confirmWatering() {
+            if (!currentScheduleToConfirm) return;
+
+            // Get the duration from the selected schedule
+            const durationMinutes = currentScheduleToConfirm.duration;
+
+            // Calculate water amount (adjust formula as needed)
+            const waterAmountValue = (durationMinutes * 0.5).toFixed(1); // Example: 0.5L per minute
+
+            // Prepare the command
+            const command = {
+                type: 'irrigation_command',
+                command: 'start',
+                duration: durationMinutes,
+                water_amount: waterAmountValue
+            };
+
+            console.log("Sending irrigation command:", command);
+
+            // Check WebSocket connection
+            if (!socket || socket.readyState !== WebSocket.OPEN) {
+                showAlert("Error: Not connected to irrigation system", "error");
+                connectWebSocket(); // Attempt to reconnect
+                return;
+            }
+
+            try {
+                // Send the command
+                socket.send(JSON.stringify(command));
+                showAlert(`Watering started for ${durationMinutes} minutes`, "success");
+                
+                // Update schedule timestamps
+                updateScheduleAfterWatering(currentScheduleToConfirm.id);
+                
+            } catch (error) {
+                console.error("Failed to send command:", error);
+                showAlert("Failed to start watering - connection error", "error");
+            }
+
+            // Hide the confirmation overlay
+            hideWateringConfirmation();
+            }
+
+        // User chooses to skip watering
+        function skipWatering() {
+            if (!currentScheduleToConfirm) return;
+            
+            // Just reschedule for next time without marking as run
+            const scheduleIndex = schedules.findIndex(s => s.id === currentScheduleToConfirm.id);
+            if (scheduleIndex !== -1) {
+                schedules[scheduleIndex].nextRun = calculateNextRun(
+                    currentScheduleToConfirm.wateringTime, 
+                    currentScheduleToConfirm.frequency
+                );
+                saveSchedulesData();
+                
+                // Update the UI
+                renderSchedules();
+            }
+            
+            hideWateringConfirmation();
+            showAlert('Watering skipped. Next watering scheduled for ' + 
+                    formatNextRun(schedules[scheduleIndex].nextRun), 'info');
+        }
+        
+        // Adjust duration based on crop age
+        function adjustDurationBasedOnCropAge(schedule) {
+            const cropAge = calculateCropAge(schedule.plantingDate);
+            let adjustedSchedule = {...schedule};
+            
+            // Example adjustment logic (you can modify based on crop-specific needs)
+            if (cropAge < 14) {
+                // Seedling stage - reduce duration by 30%
+                adjustedSchedule.duration = Math.round(schedule.duration * 0.7);
+            } else if (cropAge >= 14 && cropAge < 45) {
+                // Growing stage - standard duration
+                // No adjustment needed
+            } else if (cropAge >= 45) {
+                // Mature stage - increase duration by 20%
+                adjustedSchedule.duration = Math.round(schedule.duration * 1.2);
+            }
+            
+            return adjustedSchedule;
+        }
+
+        // Send watering command to ESP32
+        function triggerWatering(schedule) {
+            if (!isConnected) {
+                showAlert("Cannot start watering - ESP32 not connected", "error");
+                return;
+            }
+            
+            const command = {
+                command: "start_irrigation",
+                duration: parseInt(schedule.duration),
+                scheduleId: schedule.id
+            };
+            
+            socket.send(JSON.stringify(command));
+            console.log("Sent watering command:", command);
+        }
+
+        // Calculate next run time based on frequency
+        function calculateNextRun(time, frequency) {
+            const now = new Date();
+            const [hours, minutes] = time.split(':').map(Number);
+            
+            // Create a date object for today at the scheduled time
+            const nextRun = new Date();
+            nextRun.setHours(hours, minutes, 0, 0);
+            
+            // If the time has already passed today, schedule for next occurrence
+            if (nextRun <= now) {
+                const daysToAdd = frequency === '7' ? 1 : // Daily
+                                frequency === '1' ? 7 : // Weekly
+                                frequency === '2' ? 3 : // Twice a week (~every 3-4 days)
+                                frequency === '3' ? 2 : // Every other day
+                                frequency === '14' ? 14 : // Every 2 weeks
+                                1; // Default to next day
+                
+                nextRun.setDate(nextRun.getDate() + daysToAdd);
+            }
+            
+            return nextRun;
+        }
+
+        // Helper functions
+        function formatTime(timeString) {
+            const [hours, minutes] = timeString.split(':');
+            const hour = parseInt(hours);
+            const ampm = hour >= 12 ? 'PM' : 'AM';
+            const hour12 = hour % 12 || 12;
+            return `${hour12}:${minutes} ${ampm}`;
+        }
+
+
+        // Update schedule after watering is complete
+function updateScheduleAfterWatering(scheduleId) {
+    const now = new Date();
+    const scheduleIndex = schedules.findIndex(s => s.id === scheduleId);
+    
+    if (scheduleIndex !== -1) {
+        // Update last run time
+        schedules[scheduleIndex].lastRun = now;
+        
+        // Calculate next run time
+        schedules[scheduleIndex].nextRun = calculateNextRun(
+            schedules[scheduleIndex].wateringTime,
+            schedules[scheduleIndex].frequency
+        );
+        
+        // Save to localStorage
+        saveSchedulesData();
+        
+        // Update UI
+        renderSchedules();
+    }
+}
+
+// Reconnect WebSocket if needed
+function reconnectWebSocket() {
+    if (socket && socket.readyState === WebSocket.CONNECTING) return;
+    
+    console.log("Attempting to reconnect WebSocket...");
+    connectWebSocket();
+    
+    // Try again after 5 seconds if still not connected
+    setTimeout(() => {
+        if (!isConnected) {
+            reconnectWebSocket();
+        }
+    }, 5000);
+}
+        function formatDate(date) {
+            if (!date) return 'Not set';
+            
+            const options = { 
+                month: 'short', 
+                day: 'numeric',
+                year: 'numeric'
+            };
+            return new Date(date).toLocaleDateString('en-US', options);
+        }
+
+        function formatNextRun(date) {
+            if (!date) return 'Not scheduled';
+            
+            const options = { 
+                weekday: 'short', 
+                month: 'short', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            };
+            return date.toLocaleDateString('en-US', options);
+        }
+
+        function getFrequencyText(frequency) {
+            switch(frequency) {
+                case '1': return 'Once per week';
+                case '2': return 'Twice per week';
+                case '3': return 'Every other day';
+                case '7': return 'Daily';
+                case '14': return 'Every 2 weeks';
+                default: return `${frequency} times/week`;
+            }
+        }
+
+        function showScheduleForm() {
+            document.getElementById('scheduleForm').classList.remove('hidden');
+            document.getElementById('noScheduleBox').classList.add('hidden');
+            // Reset confirmation checkbox
+            document.getElementById('confirmIrrigation').checked = false;
+        }
+
+        function hideScheduleForm() {
+            document.getElementById('scheduleForm').classList.add('hidden');
+            updateUI();
+        }
+
+        function editSchedule(id) {
+            // Find the schedule to edit
+            const schedule = schedules.find(s => s.id === id);
+            if (!schedule) {
+                showAlert('Schedule not found', 'error');
+                return;
+            }
+            
+            // Populate form with schedule data
+            document.getElementById('soilType').value = schedule.soil;
+            document.getElementById('vegetation').value = schedule.vegetation;
+            document.getElementById('frequency').value = schedule.frequency;
+            document.getElementById('wateringTime').value = schedule.wateringTime;
+            document.getElementById('duration').value = schedule.duration;
+            
+            // Format the date as YYYY-MM-DD for the input
+            if (schedule.plantingDate) {
+                const dateObj = new Date(schedule.plantingDate);
+                const year = dateObj.getFullYear();
+                const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+                const day = String(dateObj.getDate()).padStart(2, '0');
+                document.getElementById('plantingDate').value = `${year}-${month}-${day}`;
+            }
+            
+            // Remove the old schedule
+            deleteSchedule(id);
+            
+            // Show the form
+            showScheduleForm();
+        }
+
+        function showAlert(message, type) {
+            const alert = document.createElement('div');
+            alert.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg text-white ${
+                type === 'error' ? 'bg-red-500' : 
+                type === 'success' ? 'bg-green-500' : 'bg-blue-500'
+            } fade-in`;
+            alert.innerHTML = `
+                <div class="flex items-center">
+                    <i class="fas ${
+                        type === 'error' ? 'fa-exclamation-circle' : 
+                        type === 'success' ? 'fa-check-circle' : 'fa-info-circle'
+                    } mr-2"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+            document.body.appendChild(alert);
+            
+            setTimeout(() => {
+                alert.classList.add('opacity-0', 'transition-opacity', 'duration-500');
+                setTimeout(() => alert.remove(), 500);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

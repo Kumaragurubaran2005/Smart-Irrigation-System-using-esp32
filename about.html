@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About Our Smart Irrigation System</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #2e7d32;
+            --secondary-color: #388e3c;
+            --accent-color: #4caf50;
+            --light-bg: #f8f9fa;
+            --dark-text: #2c3e50;
+            --light-text: #f5f5f5;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8eb 100%);
+            color: var(--dark-text);
+            min-height: 100vh;
+            padding-bottom: 80px;
+            margin: 0;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            text-align: center;
+            margin: 30px 0;
+            position: relative;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            color: var(--primary-color);
+            margin-bottom: 10px;
+            position: relative;
+            display: inline-block;
+        }
+        
+        h1::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 4px;
+            background: var(--accent-color);
+            border-radius: 2px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        
+        .card.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        h2 {
+            color: var(--primary-color);
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+            position: relative;
+            padding-bottom: 10px;
+        }
+        
+        h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background: var(--accent-color);
+        }
+        
+        p {
+            line-height: 1.6;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+        
+        .team-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        
+        .team-member {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+            text-align: center;
+            border-top: 4px solid var(--accent-color);
+        }
+        
+        .team-member:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        .team-member img {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-bottom: 15px;
+            border: 4px solid var(--accent-color);
+        }
+        
+        .team-member h3 {
+            color: var(--primary-color);
+            margin-bottom: 5px;
+        }
+        
+        .team-member .role {
+            color: #666;
+            font-style: italic;
+            margin-bottom: 15px;
+            display: block;
+        }
+        
+        .social-links {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+        
+        .social-links a {
+            color: var(--primary-color);
+            font-size: 1.2rem;
+            transition: var(--transition);
+        }
+        
+        .social-links a:hover {
+            color: var(--accent-color);
+            transform: scale(1.2);
+        }
+        
+        .contact-info {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        
+        .contact-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 20px;
+            background: var(--light-bg);
+            border-radius: 30px;
+            transition: var(--transition);
+        }
+        
+        .contact-item:hover {
+            background: var(--accent-color);
+            color: white;
+        }
+        
+        .contact-item i {
+            font-size: 1.2rem;
+        }
+        
+        a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+        
+        a:hover {
+            color: var(--secondary-color);
+            text-decoration: underline;
+        }
+        
+        .nav {
+            display: flex;
+            justify-content: space-around;
+            background: white;
+            padding: 8px 0;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            z-index: 100;
+        }
+        
+        .nav-item {
+            text-align: center;
+            font-size: 0.9rem;
+            color: #666;
+            cursor: pointer;
+            transition: var(--transition);
+            padding: 5px 15px;
+            border-radius: 20px;
+        }
+        
+        .nav-item i {
+            font-size: 1.4rem;
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        .nav-item.active {
+            color: var(--primary-color);
+            font-weight: 600;
+            background: rgba(46, 125, 50, 0.1);
+        }
+        
+        .nav-item:hover {
+            color: var(--primary-color);
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.6s ease-out forwards;
+        }
+        
+        .delay-1 { animation-delay: 0.2s; }
+        .delay-2 { animation-delay: 0.4s; }
+        .delay-3 { animation-delay: 0.6s; }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .team-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>About Our Smart Irrigation System</h1>
+            <p>Revolutionizing agriculture through intelligent water management</p>
+        </header>
+        
+        <div class="card fade-in">
+            <h2>Our Mission</h2>
+            <p>The Smart Irrigation System is designed to help farmers optimize water usage through intelligent monitoring and automation. In a world facing increasing water scarcity, our mission is to make agriculture more sustainable and efficient.</p>
+            <p>By combining IoT sensors, weather data analysis, and machine learning algorithms, our system provides precise irrigation recommendations that can reduce water consumption by up to 30% while maintaining or improving crop yields.</p>
+        </div>
+        
+        <div class="card fade-in delay-1">
+            <h2>How It Works</h2>
+            <p>Our system continuously monitors:</p>
+            <ul style="line-height: 1.6; margin-left: 20px; margin-bottom: 15px;">
+                <li>Soil moisture levels at depths</li>
+                <li>Ambient temperature and humidity</li>
+                <li>Weather forecasts and evapotranspiration rates</li>
+                <li>Water levels and crop age </li>
+            </ul>
+            <p>This data is analyzed by our proprietary algorithms to determine the optimal irrigation schedule and duration for each crop type and growth stage.</p>
+        </div>
+        
+        <div class="card fade-in delay-2">
+            <h2>Meet The Team</h2>
+            <p>The brilliant minds behind our innovative solution:</p>
+            
+            <div class="team-grid">
+                <div class="team-member">
+                    <img src="https://via.placeholder.com/150" alt="Kumara Gurubaran">
+                    <h3>Kumara Gurubaran</h3>
+                    <span class="role">Web developer and ML Engineer</span>
+                    <p>Created the web app and Created the predictive algorithms and data models</p>
+                    <div class="social-links">
+                        <a href="#" target="_blank" title="LinkedIn"><i class="fab fa-linkedin"></i></a>
+                        <a href="https://github.com/Kumaragurubaran2005/Smart-Irigation-System" target="_blank" title="GitHub"><i class="fab fa-github"></i></a>
+                        <a href="mailto:kumara.gurubaran2023@vitstudent.ac.in" title="Email"><i class="fas fa-envelope"></i></a>
+                    </div>
+                </div>
+                
+                
+                <div class="team-member">
+                    <img src="https://via.placeholder.com/150" alt="Vijay Shankar">
+                    <h3>Vijay Shankar</h3>
+                    <span class="role">Hardware Integration</span>
+                    <p>Developed the backend services and data integration</p>
+                    <div class="social-links">
+                        <a href="#" title="LinkedIn"><i class="fab fa-linkedin"></i></a>
+                        <a href="#" title="GitHub"><i class="fab fa-github"></i></a>
+                        <a href="#" title="Email"><i class="fas fa-envelope"></i></a>
+                    </div>
+                </div>
+                
+                <div class="team-member">
+                    <img src="https://via.placeholder.com/150" alt="Rishi Kethan Reddy">
+                    <h3>Rishi Kethan Reddy</h3>
+                    <span class="role">base Software Developer</span>
+                    <p>Architected the web dashboard</p>
+                    <div class="social-links">
+                        <a href="#" title="LinkedIn"><i class="fab fa-linkedin"></i></a>
+                        <a href="#" title="GitHub"><i class="fab fa-github"></i></a>
+                        <a href="mailto:rishikethan.reddy2023@vitstudent.ac.in" title="Email"><i class="fas fa-envelope"></i></a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card fade-in delay-3">
+            <h2>Contact Us</h2>
+            <p>We'd love to hear from you! Reach out for partnerships, support, or just to say hello.</p>
+            
+            <div class="contact-info">
+                <div class="contact-item">
+                    <i class="fas fa-envelope"></i>
+                    <a href="mailto:kumara.gurubaran2023@vitstudent.ac.in">kumara.gurubaran2023@vitstudent.ac.in</a>
+                </div>
+                <div class="contact-item">
+                    <i class="fab fa-linkedin"></i>
+                    <a href="https://www.linkedin.com/in/rishikethanreddy" target="_blank">LinkedIn Profile</a>
+                </div>
+                <div class="contact-item">
+                    <i class="fab fa-github"></i>
+                    <a href="https://github.com/Kumaragurubaran2005/Smart-Irigation-System" target="_blank">GitHub Repository</a>
+                </div>
+                <div class="contact-item">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span>VIT University, Vellore, India</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="nav">
+        <div class="nav-item" onclick="window.location.href='home.html'">
+            <i class="fas fa-home"></i>
+            <span>Home</span>
+        </div>
+        <div class="nav-item" onclick="window.location.href='schedule.html'">
+            <i class="fas fa-calendar-alt"></i>
+            <span>Schedule</span>
+        </div>
+        <div class="nav-item active">
+            <i class="fas fa-info-circle"></i>
+            <span>About</span>
+        </div>
+        <div class="nav-item" onclick="window.location.href='settings.html'">
+            <i class="fas fa-cog"></i>
+            <span>Settings</span>
+        </div>
+    </div>
+
+    <script>
+        // Simple animation trigger when elements come into view
+        document.addEventListener('DOMContentLoaded', function() {
+            const cards = document.querySelectorAll('.card');
+            
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.1 });
+            
+            cards.forEach(card => {
+                observer.observe(card);
+            });
+        });
+    </script>
+</body>
+</html>

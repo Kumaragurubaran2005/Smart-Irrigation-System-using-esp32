@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Irrigation - Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Include SHA-256 hashing library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-sha256/0.9.0/sha256.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #2e7d32;
+            --secondary-color: #388e3c;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), 
+                        url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80') no-repeat center center fixed;
+            background-size: cover;
+            min-height: 100vh;
+        }
+        
+        .login-card {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.85);
+        }
+        
+        .input-field:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.2);
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--secondary-color);
+            transform: translateY(-2px);
+        }
+        
+        .error-message {
+            color: #dc2626;
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+        
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+        
+        .success-message {
+            color: var(--primary-color);
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center p-4" onload="clearSession()">
+    <div class="login-card w-full max-w-md rounded-xl shadow-2xl overflow-hidden">
+        <div class="p-8">
+            <div class="text-center mb-8">
+                <img src="https://cdn-icons-png.flaticon.com/512/2965/2965300.png" alt="Logo" class="h-20 mx-auto mb-4">
+                <h1 class="text-3xl font-bold text-gray-800">Smart Irrigation</h1>
+                <p class="text-gray-600 mt-2" id="form-title">Sign in to your account</p>
+            </div>
+            
+            <form id="authForm" class="space-y-4">
+                <div id="name-field" class="hidden">
+                    <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-user text-gray-400"></i>
+                        </div>
+                        <input type="text" id="name" name="name"
+                               class="input-field pl-10 w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none"
+                               placeholder="John Doe">
+                        <div id="name-error" class="error-message"></div>
+                    </div>
+                </div>
+                
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-envelope text-gray-400"></i>
+                        </div>
+                        <input type="email" id="email" name="email" required
+                               class="input-field pl-10 w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none"
+                               placeholder="your@email.com">
+                        <div id="email-error" class="error-message"></div>
+                    </div>
+                </div>
+                
+                <div>
+                    <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-lock text-gray-400"></i>
+                        </div>
+                        <input type="password" id="password" name="password" required
+                               class="input-field pl-10 w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none"
+                               placeholder="••••••••">
+                        <button type="button" id="togglePassword" class="absolute right-3 top-3 text-gray-400 hover:text-gray-600">
+                        </button>
+                        <div id="password-error" class="error-message"></div>
+                    </div>
+                </div>
+                
+                <div id="confirm-password-field" class="hidden">
+                    <label for="confirm-password" class="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-lock text-gray-400"></i>
+                        </div>
+                        <input type="password" id="confirm-password" name="confirm-password"
+                               class="input-field pl-10 w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none"
+                               placeholder="••••••••">
+                        <div id="confirm-password-error" class="error-message"></div>
+                    </div>
+                </div>
+                
+                <div id="login-options" class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <input id="remember-me" name="remember-me" type="checkbox" 
+                               class="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded">
+                        <label for="remember-me" class="ml-2 block text-sm text-gray-700">Remember me</label>
+                    </div>
+                    
+                    <div class="text-sm">
+                        <a href="#" id="forgot-password" class="font-medium text-green-600 hover:text-green-500">Forgot password?</a>
+                    </div>
+                </div>
+                
+                <div id="form-error" class="error-message text-center"></div>
+                
+                <div>
+                    <button type="submit" id="submit-btn" class="btn-primary w-full py-2 px-4 rounded-lg text-white font-semibold shadow-md flex items-center justify-center">
+                        <span id="submit-text">Sign In</span>
+                        <span id="submit-spinner" class="hidden ml-2">
+                            <i class="fas fa-spinner fa-spin"></i>
+                        </span>
+                    </button>
+                </div>
+            </form>
+            
+            <div class="mt-6 text-center">
+                <p class="text-sm text-gray-600">
+                    <span id="toggle-text">Don't have an account?</span> 
+                    <a href="#" id="toggle-form" class="font-medium text-green-600 hover:text-green-500">Sign up</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Forgot Password Modal -->
+    <div id="forgotPasswordModal" class="modal">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-gray-800">Reset Password</h2>
+                <button id="closeModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <form id="forgotPasswordForm">
+                <div class="mb-4">
+                    <p class="text-sm text-gray-600 mb-4">Enter your email and new password to reset.</p>
+                    <label for="reset-email" class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-envelope text-gray-400"></i>
+                        </div>
+                        <input type="email" id="reset-email" name="reset-email" required
+                               class="input-field pl-10 w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none"
+                               placeholder="your@email.com">
+                        <div id="reset-email-error" class="error-message"></div>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="new-password" class="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-lock text-gray-400"></i>
+                        </div>
+                        <input type="password" id="new-password" name="new-password" required
+                               class="input-field pl-10 w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none"
+                               placeholder="••••••••">
+                        <div id="new-password-error" class="error-message"></div>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="confirm-new-password" class="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-lock text-gray-400"></i>
+                        </div>
+                        <input type="password" id="confirm-new-password" name="confirm-new-password" required
+                               class="input-field pl-10 w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none"
+                               placeholder="••••••••">
+                        <div id="confirm-new-password-error" class="error-message"></div>
+                    </div>
+                </div>
+                
+                <div id="reset-success" class="hidden mb-4 p-3 bg-green-100 text-green-700 rounded text-sm">
+                    <i class="fas fa-check-circle mr-2"></i>
+                    <span>Your password has been successfully updated.</span>
+                </div>
+                
+                <div class="flex justify-end space-x-3">
+                    <button type="button" id="cancelReset" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
+                        Cancel
+                    </button>
+                    <button type="submit" id="submit-reset" class="btn-primary px-4 py-2 rounded-lg text-white font-semibold flex items-center">
+                        <span id="reset-text">Reset Password</span>
+                        <span id="reset-spinner" class="hidden ml-2">
+                            <i class="fas fa-spinner fa-spin"></i>
+                        </span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Function to clear any existing user session
+        function clearSession() {
+            // Remove the current user data from localStorage
+            localStorage.removeItem('currentUser');
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // DOM Elements
+            const authForm = document.getElementById('authForm');
+            const togglePassword = document.getElementById('togglePassword');
+            const passwordInput = document.getElementById('password');
+            const emailInput = document.getElementById('email');
+            const nameInput = document.getElementById('name');
+            const confirmPasswordInput = document.getElementById('confirm-password');
+            const submitBtn = authForm.querySelector('button[type="submit"]');
+            const submitText = document.getElementById('submit-text');
+            const submitSpinner = document.getElementById('submit-spinner');
+            const toggleForm = document.getElementById('toggle-form');
+            const toggleText = document.getElementById('toggle-text');
+            const formTitle = document.getElementById('form-title');
+            const nameField = document.getElementById('name-field');
+            const confirmPasswordField = document.getElementById('confirm-password-field');
+            const loginOptions = document.getElementById('login-options');
+            const forgotPasswordLink = document.getElementById('forgot-password');
+            
+            // Modal elements
+            const forgotPasswordModal = document.getElementById('forgotPasswordModal');
+            const closeModal = document.getElementById('closeModal');
+            const cancelReset = document.getElementById('cancelReset');
+            const forgotPasswordForm = document.getElementById('forgotPasswordForm');
+            const resetEmailInput = document.getElementById('reset-email');
+            const newPasswordInput = document.getElementById('new-password');
+            const confirmNewPasswordInput = document.getElementById('confirm-new-password');
+            const resetSubmitBtn = document.getElementById('submit-reset');
+            const resetText = document.getElementById('reset-text');
+            const resetSpinner = document.getElementById('reset-spinner');
+            const resetSuccess = document.getElementById('reset-success');
+            
+            let isLoginForm = true;
+            
+            // Initialize local storage if empty
+            if (!localStorage.getItem('users')) {
+                localStorage.setItem('users', JSON.stringify([]));
+            }
+            
+            // Forgot password functionality
+            forgotPasswordLink.addEventListener('click', function(e) {
+                e.preventDefault();
+                resetSuccess.classList.add('hidden');
+                forgotPasswordForm.reset();
+                document.getElementById('reset-email-error').textContent = '';
+                document.getElementById('new-password-error').textContent = '';
+                document.getElementById('confirm-new-password-error').textContent = '';
+                forgotPasswordModal.style.display = 'flex';
+            });
+            
+            closeModal.addEventListener('click', function() {
+                forgotPasswordModal.style.display = 'none';
+            });
+            
+            cancelReset.addEventListener('click', function() {
+                forgotPasswordModal.style.display = 'none';
+            });
+            
+            // Close modal when clicking outside
+            window.addEventListener('click', function(e) {
+                if (e.target === forgotPasswordModal) {
+                    forgotPasswordModal.style.display = 'none';
+                }
+            });
+            
+            // Handle password reset request
+            forgotPasswordForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const email = resetEmailInput.value.trim();
+                const newPassword = newPasswordInput.value;
+                const confirmNewPassword = confirmNewPasswordInput.value;
+                const users = JSON.parse(localStorage.getItem('users'));
+                
+                // Validate email
+                if (!validateEmail(email)) {
+                    document.getElementById('reset-email-error').textContent = 'Please enter a valid email address';
+                    return;
+                }
+                
+                // Check if email exists
+                const userIndex = users.findIndex(u => u.email === email);
+                if (userIndex === -1) {
+                    document.getElementById('reset-email-error').textContent = 'No account found with this email';
+                    return;
+                }
+                
+                // Validate new password
+                if (newPassword.length < 6) {
+                    document.getElementById('new-password-error').textContent = 'Password must be at least 6 characters';
+                    return;
+                }
+                
+                // Check if passwords match
+                if (newPassword !== confirmNewPassword) {
+                    document.getElementById('confirm-new-password-error').textContent = 'Passwords do not match';
+                    return;
+                }
+                
+                // Show loading state
+                resetText.textContent = 'Updating...';
+                resetSpinner.classList.remove('hidden');
+                resetSubmitBtn.disabled = true;
+                
+                // Simulate password reset (in a real app, this would call your backend)
+                setTimeout(() => {
+                    // Update user's password
+                    const hashedPassword = sha256(newPassword);
+                    users[userIndex].password = hashedPassword;
+                    localStorage.setItem('users', JSON.stringify(users));
+                    
+                    resetText.textContent = 'Reset Password';
+                    resetSpinner.classList.add('hidden');
+                    resetSubmitBtn.disabled = false;
+                    
+                    // Show success message
+                    resetSuccess.classList.remove('hidden');
+                    
+                    // Hide the modal after 3 seconds
+                    setTimeout(() => {
+                        forgotPasswordModal.style.display = 'none';
+                    }, 3000);
+                }, 1500);
+            });
+            
+            // Toggle between login and register forms
+            toggleForm.addEventListener('click', function(e) {
+                e.preventDefault();
+                isLoginForm = !isLoginForm;
+                
+                if (isLoginForm) {
+                    formTitle.textContent = 'Sign in to your account';
+                    submitText.textContent = 'Sign In';
+                    toggleText.textContent = 'Don\'t have an account?';
+                    toggleForm.textContent = 'Sign up';
+                    nameField.classList.add('hidden');
+                    confirmPasswordField.classList.add('hidden');
+                    loginOptions.classList.remove('hidden');
+                } else {
+                    formTitle.textContent = 'Create a new account';
+                    submitText.textContent = 'Register';
+                    toggleText.textContent = 'Already have an account?';
+                    toggleForm.textContent = 'Sign in';
+                    nameField.classList.remove('hidden');
+                    confirmPasswordField.classList.remove('hidden');
+                    loginOptions.classList.add('hidden');
+                }
+                
+                // Clear form and errors
+                authForm.reset();
+                clearAllErrors();
+            });
+            
+            // Toggle password visibility
+            togglePassword.addEventListener('click', function() {
+                const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                passwordInput.setAttribute('type', type);
+                this.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+            });
+            
+            // Form validation
+            function validateEmail(email) {
+                const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                return re.test(email);
+            }
+            
+            function showError(element, message) {
+                const errorElement = document.getElementById(`${element.id}-error`);
+                errorElement.textContent = message;
+                element.classList.add('border-red-500');
+            }
+            
+            function clearError(element) {
+                const errorElement = document.getElementById(`${element.id}-error`);
+                errorElement.textContent = '';
+                element.classList.remove('border-red-500');
+            }
+            
+            function clearAllErrors() {
+                const errorElements = document.querySelectorAll('.error-message');
+                errorElements.forEach(el => el.textContent = '');
+                const inputs = document.querySelectorAll('input');
+                inputs.forEach(input => input.classList.remove('border-red-500'));
+                document.getElementById('form-error').textContent = '';
+            }
+            
+            emailInput.addEventListener('input', () => {
+                if (!validateEmail(emailInput.value)) {
+                    showError(emailInput, 'Please enter a valid email address');
+                } else {
+                    clearError(emailInput);
+                }
+            });
+            
+            passwordInput.addEventListener('input', () => {
+                if (passwordInput.value.length < 6) {
+                    showError(passwordInput, 'Password must be at least 6 characters');
+                } else {
+                    clearError(passwordInput);
+                }
+            });
+            
+            if (confirmPasswordInput) {
+                confirmPasswordInput.addEventListener('input', () => {
+                    if (confirmPasswordInput.value !== passwordInput.value) {
+                        showError(confirmPasswordInput, 'Passwords do not match');
+                    } else {
+                        clearError(confirmPasswordInput);
+                    }
+                });
+            }
+            
+            // Form submission
+            authForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                clearAllErrors();
+                
+                // Validate inputs
+                let isValid = true;
+                
+                if (!validateEmail(emailInput.value)) {
+                    showError(emailInput, 'Please enter a valid email address');
+                    isValid = false;
+                }
+                
+                if (passwordInput.value.length < 6) {
+                    showError(passwordInput, 'Password must be at least 6 characters');
+                    isValid = false;
+                }
+                
+                if (!isLoginForm) {
+                    if (nameInput.value.trim() === '') {
+                        showError(nameInput, 'Please enter your name');
+                        isValid = false;
+                    }
+                    
+                    if (confirmPasswordInput.value !== passwordInput.value) {
+                        showError(confirmPasswordInput, 'Passwords do not match');
+                        isValid = false;
+                    }
+                }
+                
+                if (!isValid) return;
+                
+                // Show loading state
+                submitText.textContent = isLoginForm ? 'Signing In...' : 'Registering...';
+                submitSpinner.classList.remove('hidden');
+                submitBtn.disabled = true;
+                
+                try {
+                    if (isLoginForm) {
+                        await handleLogin();
+                    } else {
+                        await handleRegistration();
+                    }
+                } catch (error) {
+                    document.getElementById('form-error').textContent = error.message || 'An error occurred';
+                    console.error('Authentication error:', error);
+                } finally {
+                    // Reset button state
+                    submitText.textContent = isLoginForm ? 'Sign In' : 'Register';
+                    submitSpinner.classList.add('hidden');
+                    submitBtn.disabled = false;
+                }
+            });
+            
+            async function handleLogin() {
+                const users = JSON.parse(localStorage.getItem('users'));
+                const hashedPassword = sha256(passwordInput.value);
+                
+                const user = users.find(u => 
+                    u.email === emailInput.value && 
+                    u.password === hashedPassword
+                );
+                
+                if (user) {
+                    // Store current user session - without remember me feature
+                    localStorage.setItem('currentUser', JSON.stringify({
+                        email: user.email,
+                        name: user.name,
+                        loggedInAt: new Date().toISOString()
+                    }));
+                    
+                    // Redirect to home page
+                    window.location.href = 'home.html';
+                } else {
+                    throw new Error('Invalid email or password');
+                }
+            }
+            
+            async function handleRegistration() {
+                const users = JSON.parse(localStorage.getItem('users'));
+                
+                // Check if email already exists
+                if (users.some(u => u.email === emailInput.value)) {
+                    throw new Error('Email already registered');
+                }
+                
+                // Hash password before storing
+                const hashedPassword = sha256(passwordInput.value);
+                
+                // Create new user
+                const newUser = {
+                    name: nameInput.value.trim(),
+                    email: emailInput.value,
+                    password: hashedPassword,
+                    createdAt: new Date().toISOString()
+                };
+                
+                // Save to local storage
+                users.push(newUser);
+                localStorage.setItem('users', JSON.stringify(users));
+                
+                // Auto-login after registration
+                localStorage.setItem('currentUser', JSON.stringify({
+                    email: newUser.email,
+                    name: newUser.name,
+                    loggedInAt: new Date().toISOString()
+                }));
+                
+                // Redirect to home page
+                window.location.href = 'home.html';
+            }
+        });
+    </script>
+</body>
+</html>

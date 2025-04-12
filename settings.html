@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Irrigation - Settings</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-sha256/0.9.0/sha256.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #2e7d32;
+            --secondary-color: #388e3c;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), 
+                        url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80') no-repeat center center fixed;
+            background-size: cover;
+            min-height: 100vh;
+            padding-bottom: 80px;
+        }
+        
+        .settings-card {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.85);
+        }
+        
+        .input-field:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.2);
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--secondary-color);
+            transform: translateY(-2px);
+        }
+        
+        .error-message {
+            color: #dc2626;
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+        
+        .success-message {
+            color: #2e7d32;
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+        
+        .nav {
+            display: flex;
+            justify-content: space-around;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 8px 0;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            z-index: 100;
+        }
+        
+        .nav-item {
+            text-align: center;
+            font-size: 0.9rem;
+            color: #666;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            padding: 5px 15px;
+            border-radius: 20px;
+        }
+        
+        .nav-item i {
+            font-size: 1.4rem;
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        .nav-item.active {
+            color: var(--primary-color);
+            font-weight: 600;
+            background: rgba(46, 125, 50, 0.1);
+        }
+        
+        .nav-item:hover {
+            color: var(--primary-color);
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center p-4 md:p-6">
+    <!-- Authentication Check -->
+    <script>
+        const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+        if (!currentUser) {
+            window.location.href = 'login.html';
+        }
+    </script>
+
+    <header class="w-full text-center mb-6">
+        <h1 class="text-3xl font-bold text-white mb-2">Account Settings</h1>
+        <p class="text-white opacity-80">Manage your profile and security</p>
+    </header>
+
+    <div class="settings-card w-full max-w-2xl rounded-xl shadow-lg overflow-hidden mb-20">
+        <div class="p-6">
+            <!-- Profile Information Section -->
+            <div class="mb-8">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+                    <i class="fas fa-user-circle text-green-600 mr-2 text-2xl"></i>
+                    Profile Information
+                </h2>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                        <div class="flex items-center p-3 bg-gray-50 rounded-lg">
+                            <i class="fas fa-user text-gray-400 mr-2"></i>
+                            <span id="display-name" class="text-gray-800"></span>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                        <div class="flex items-center p-3 bg-gray-50 rounded-lg">
+                            <i class="fas fa-envelope text-gray-400 mr-2"></i>
+                            <span id="display-email" class="text-gray-800"></span>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Account Created</label>
+                        <div class="flex items-center p-3 bg-gray-50 rounded-lg">
+                            <i class="fas fa-calendar-alt text-gray-400 mr-2"></i>
+                            <span id="display-created" class="text-gray-800"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Change Password Section -->
+            <div class="mb-8">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+                    <i class="fas fa-key text-green-600 mr-2 text-2xl"></i>
+                    Change Password
+                </h2>
+                
+                <form id="changePasswordForm" class="space-y-4">
+                    <div>
+                        <label for="current-password" class="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-lock text-gray-400"></i>
+                            </div>
+                            <input type="password" id="current-password" name="current-password" required
+                                   class="input-field pl-10 w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none"
+                                   placeholder="Enter current password">
+                            <button type="button" id="toggleCurrentPassword" class="absolute right-3 top-3 text-gray-400 hover:text-gray-600">
+                                
+                            </button>
+                            <div id="current-password-error" class="error-message"></div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label for="new-password" class="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-lock text-gray-400"></i>
+                            </div>
+                            <input type="password" id="new-password" name="new-password" required
+                                   class="input-field pl-10 w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none"
+                                   placeholder="Enter new password">
+                            <button type="button" id="toggleNewPassword" class="absolute right-3 top-3 text-gray-400 hover:text-gray-600">
+                                
+                            </button>
+                            <div id="new-password-error" class="error-message"></div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label for="confirm-new-password" class="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-lock text-gray-400"></i>
+                            </div>
+                            <input type="password" id="confirm-new-password" name="confirm-new-password" required
+                                   class="input-field pl-10 w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none"
+                                   placeholder="Confirm new password">
+                            <div id="confirm-password-error" class="error-message"></div>
+                        </div>
+                    </div>
+                    
+                    <div id="password-change-message" class="text-center"></div>
+                    
+                    <div>
+                        <button type="submit" class="btn-primary w-full py-2 px-4 rounded-lg text-white font-semibold shadow-md flex items-center justify-center">
+                            <span id="change-password-text">Update Password</span>
+                            <span id="change-password-spinner" class="hidden ml-2">
+                                <i class="fas fa-spinner fa-spin"></i>
+                            </span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- Logout Section -->
+            <div class="border-t border-gray-200 pt-6">
+                <h2 class="text-xl font-semibold text-red-600 mb-4 flex items-center">
+                    <i class="fas fa-exclamation-triangle mr-2 text-2xl"></i>
+                    Danger Zone
+                </h2>
+                
+                <div class="bg-red-50 p-4 rounded-lg">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h3 class="font-medium text-red-700">Logout of your account</h3>
+                            <p class="text-sm text-red-600">You'll need to login again to access the system</p>
+                        </div>
+                        <button onclick="logout()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                            <i class="fas fa-sign-out-alt mr-1"></i> Logout
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <div class="nav">
+        <div class="nav-item" onclick="window.location.href='home.html'">
+            <i class="fas fa-home"></i>
+            <span>Home</span>
+        </div>
+        <div class="nav-item" onclick="window.location.href='schedule.html'">
+            <i class="fas fa-calendar-alt"></i>
+            <span>Schedule</span>
+        </div>
+        <div class="nav-item" onclick="window.location.href='about.html'">
+            <i class="fas fa-info-circle"></i>
+            <span>About</span>
+        </div>
+        <div class="nav-item active" onclick="window.location.href='settings.html'">
+            <i class="fas fa-cog"></i>
+            <span>Settings</span>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load user data
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            const users = JSON.parse(localStorage.getItem('users')) || [];
+            const userData = users.find(u => u.email === currentUser.email);
+            
+            // Display user information
+            document.getElementById('display-name').textContent = userData.name;
+            document.getElementById('display-email').textContent = userData.email;
+            
+            const createdAt = new Date(userData.createdAt);
+            document.getElementById('display-created').textContent = createdAt.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            
+            // Password toggle functionality
+            const toggleCurrentPassword = document.getElementById('toggleCurrentPassword');
+            const currentPasswordInput = document.getElementById('current-password');
+            const toggleNewPassword = document.getElementById('toggleNewPassword');
+            const newPasswordInput = document.getElementById('new-password');
+            
+            toggleCurrentPassword.addEventListener('click', function() {
+                const type = currentPasswordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                currentPasswordInput.setAttribute('type', type);
+                this.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+            });
+            
+            toggleNewPassword.addEventListener('click', function() {
+                const type = newPasswordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                newPasswordInput.setAttribute('type', type);
+                this.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+            });
+            
+            // Change password form validation and submission
+            const changePasswordForm = document.getElementById('changePasswordForm');
+            const confirmNewPasswordInput = document.getElementById('confirm-new-password');
+            
+            function showError(element, message) {
+                const errorElement = document.getElementById(`${element.id}-error`);
+                errorElement.textContent = message;
+                element.classList.add('border-red-500');
+            }
+            
+            function clearError(element) {
+                const errorElement = document.getElementById(`${element.id}-error`);
+                errorElement.textContent = '';
+                element.classList.remove('border-red-500');
+            }
+            
+            function showSuccess(message) {
+                const messageDiv = document.getElementById('password-change-message');
+                messageDiv.textContent = message;
+                messageDiv.className = 'success-message text-center';
+            }
+            
+            function showErrorMsg(message) {
+                const messageDiv = document.getElementById('password-change-message');
+                messageDiv.textContent = message;
+                messageDiv.className = 'error-message text-center';
+            }
+            
+            function clearMessages() {
+                document.getElementById('password-change-message').textContent = '';
+            }
+            
+            newPasswordInput.addEventListener('input', () => {
+                if (newPasswordInput.value.length < 6) {
+                    showError(newPasswordInput, 'Password must be at least 6 characters');
+                } else {
+                    clearError(newPasswordInput);
+                }
+            });
+            
+            confirmNewPasswordInput.addEventListener('input', () => {
+                if (confirmNewPasswordInput.value !== newPasswordInput.value) {
+                    showError(confirmNewPasswordInput, 'Passwords do not match');
+                } else {
+                    clearError(confirmNewPasswordInput);
+                }
+            });
+            
+            changePasswordForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                clearMessages();
+                
+                // Validate inputs
+                let isValid = true;
+                const currentPassword = currentPasswordInput.value;
+                const newPassword = newPasswordInput.value;
+                const confirmNewPassword = confirmNewPasswordInput.value;
+                
+                // Verify current password
+                const hashedCurrentPassword = sha256(currentPassword);
+                if (hashedCurrentPassword !== userData.password) {
+                    showError(currentPasswordInput, 'Incorrect current password');
+                    isValid = false;
+                }
+                
+                // Validate new password
+                if (newPassword.length < 6) {
+                    showError(newPasswordInput, 'Password must be at least 6 characters');
+                    isValid = false;
+                }
+                
+                if (newPassword !== confirmNewPassword) {
+                    showError(confirmNewPasswordInput, 'Passwords do not match');
+                    isValid = false;
+                }
+                
+                if (!isValid) return;
+                
+                // Show loading state
+                const submitText = document.getElementById('change-password-text');
+                const submitSpinner = document.getElementById('change-password-spinner');
+                const submitBtn = changePasswordForm.querySelector('button[type="submit"]');
+                
+                submitText.textContent = 'Updating...';
+                submitSpinner.classList.remove('hidden');
+                submitBtn.disabled = true;
+                
+                // Simulate API call delay
+                setTimeout(() => {
+                    // Update password in local storage
+                    const hashedNewPassword = sha256(newPassword);
+                    userData.password = hashedNewPassword;
+                    
+                    // Update users array
+                    const userIndex = users.findIndex(u => u.email === userData.email);
+                    users[userIndex] = userData;
+                    localStorage.setItem('users', JSON.stringify(users));
+                    
+                    // Update current user session
+                    localStorage.setItem('currentUser', JSON.stringify({
+                        ...currentUser,
+                        passwordUpdatedAt: new Date().toISOString()
+                    }));
+                    
+                    // Show success message
+                    showSuccess('Password updated successfully!');
+                    
+                    // Reset form
+                    changePasswordForm.reset();
+                    
+                    // Reset button state
+                    submitText.textContent = 'Update Password';
+                    submitSpinner.classList.add('hidden');
+                    submitBtn.disabled = false;
+                    
+                    // Clear success message after 5 seconds
+                    setTimeout(clearMessages, 5000);
+                }, 1000);
+            });
+        });
+        
+        function logout() {
+            localStorage.removeItem('currentUser');
+            window.location.href = 'login.html';
+        }
+    </script>
+</body>
+</html>
