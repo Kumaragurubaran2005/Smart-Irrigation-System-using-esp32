@@ -331,6 +331,15 @@
                     try {
                         const data = JSON.parse(event.data);
                         console.log("Received data:", data);
+                        if (data.motorState !== undefined) 
+                        {
+                        // Update system status based on motor state
+                            if (data.motorState === "ON") {
+                                updateSystemStatus('watering');
+                            } else {
+                                updateSystemStatus('idle');
+                            }
+                        }
                         handleWebSocketMessage(event);
                     } catch (e) {
                         console.error("Error parsing WebSocket data:", e);
@@ -451,9 +460,9 @@
                     temperature: sensorData.temperature,
                     soil_moisture: sensorData.soilMoisture,
                     water_level: sensorData.waterLevel,
-                    age_of_crop: Number(cropData.age_of_crop) || 30,
-                    soil_type: String(cropData.soil_type) || 'Loamy',
-                    crop_planted: String(cropData.crop_planted) || 'Vegetables'
+                    age_of_crop: Number(cropData.age_of_crop) ,
+                    soil_type: String(cropData.soil_type) ,
+                    crop_planted: String(cropData.crop_planted)
                 };
 
                 console.log("Sending to ML API:", requestData);
@@ -563,6 +572,7 @@
                 dom.deviceValue.classList.add('offline-pulse');
                 dom.deviceIcon.className = 'fas fa-exclamation-triangle offline-pulse';
                 dom.acceptBtn.disabled = true;
+                
             }
         }
 
@@ -598,10 +608,15 @@
             const safeAmount = typeof amount === 'number' ? amount : 0;
             const durationMins = calculateDuration(safeAmount);
             
-            dom.waterAmount.textContent = `${safeAmount.toFixed(1)} liters`;
-            dom.duration.textContent = `${durationMins} minutes`;
+            if (safeAmount < 5) {
+                dom.waterAmount.textContent = '<5ml (Not needed)';
+                dom.duration.textContent = '0 minutes';
+            } else {
+                dom.waterAmount.textContent = `${safeAmount.toFixed(1)} ml`;
+                dom.duration.textContent = `${durationMins} minutes`;
+            }
             
-            dom.acceptBtn.disabled = !state.isOnline;
+            dom.acceptBtn.disabled = !state.isOnline || safeAmount < 5;
         }
 
         // Button Handlers
@@ -612,6 +627,19 @@
                 
                 if (isNaN(waterAmountValue)) {
                     showAlert('Invalid water amount', 'error');
+                    return;
+                }
+                
+                // Check if water amount is less than 5ml (error control threshold)
+                if (waterAmountValue < 5) {
+                    showAlert('Water amount too small (<5ml) - no watering needed', 'info');
+                    
+                    // Send command to ESP32 to ensure motor is off
+                    state.socket.send(JSON.stringify({
+                        type: 'irrigation_command',
+                        command: 'stop'
+                    }));
+                    
                     return;
                 }
                 
@@ -626,7 +654,7 @@
                     water_amount: waterAmountValue
                 }));
                 
-                showAlert(`Irrigation started for ${durationMinutes} minutes (${waterAmountValue}L)`, 'success');
+                showAlert(`Irrigation started for ${durationMinutes} minutes (${waterAmountValue}ml)`, 'success');
                 
                 // Disable accept button during watering
                 dom.acceptBtn.disabled = true;
@@ -673,8 +701,13 @@
 
         // Utility Functions
         function calculateDuration(waterAmountLiters) {
+            // Return 0 if water amount is below threshold
+            if (waterAmountLiters < 5) {
+                return 0;
+            }
+            
             // Adjust based on your system's flow rate
-            const flowRate = 2.0; // liters per minute (adjust based on your setup)
+            const flowRate = 2000.0; // liters per minute (adjust based on your setup)
             return Math.max(1, Math.round(waterAmountLiters / flowRate));
         }
 
